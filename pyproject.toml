@@ -1,0 +1,56 @@
+# uv workspace root. Each app is its own installable package (a workspace member),
+# so dependencies stay separated: the MCP server does NOT get SQLAlchemy, the API
+# does NOT get LangGraph, etc. That separation enforces the architecture.
+[project]
+name = "myshare"
+version = "0.1.0"
+description = "MyShare: a Splitwise-style app built to learn MCP end to end"
+requires-python = ">=3.12"
+license = "MIT"
+dependencies = [
+    "myshare-api",
+    "myshare-mcp",
+    "myshare-host",
+    "myshare-shared",
+]
+
+[tool.uv.workspace]
+members = ["apps/api", "apps/mcp_server", "apps/host", "packages/shared"]
+
+[tool.uv.sources]
+myshare-api = { workspace = true }
+myshare-mcp = { workspace = true }
+myshare-host = { workspace = true }
+myshare-shared = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "anyio==4.15.1",
+    "httpx==0.28.1",
+    "pyright==1.1.414",
+    "pytest==9.1.1",
+    "ruff==0.17.1",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["apps/web"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "ASYNC"]
+ignore = ["B008", "E501"]  # B008: FastAPI Depends() defaults are idiomatic; E501: the formatter owns line width
+
+[tool.pyright]
+include = ["apps/api", "apps/mcp_server", "apps/host", "packages/shared", "tests", "scripts"]
+exclude = ["apps/web", "**/node_modules", "**/.venv"]
+pythonVersion = "3.12"
+typeCheckingMode = "standard"
+venvPath = "."
+venv = ".venv"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["myshare_api", "myshare_mcp", "myshare_host", "myshare_shared", "tests"]

@@ -1,0 +1,189 @@
+@import 'tailwindcss';
+
+/* Dark mode follows a `.dark` class on <html> (set from the system preference or the manual toggle). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Design tokens, modelled on Apple's semantic system colors.
+ * Text colors use the "accessible" variants so every pairing meets 4.5:1 contrast.
+ */
+:root {
+  --bg: #f2f2f7; /* systemGroupedBackground */
+  --surface: #ffffff; /* secondarySystemGroupedBackground */
+  --surface-raised: #ffffff;
+  --label: #000000;
+  --label-2: rgb(60 60 67 / 0.72); /* secondaryLabel, darkened for contrast */
+  --label-3: rgb(60 60 67 / 0.5);
+  --separator: rgb(60 60 67 / 0.18);
+  --fill: rgb(118 118 128 / 0.12);
+  --fill-strong: rgb(118 118 128 / 0.2);
+  --accent: #0066d6; /* accessible systemBlue on white */
+  --accent-soft: rgb(0 122 255 / 0.12);
+  --positive: #1a7f37; /* owed to you */
+  --positive-soft: rgb(52 199 89 / 0.14);
+  --negative: #c4291d; /* you owe */
+  --negative-soft: rgb(255 59 48 / 0.12);
+  --warning: #b25000;
+  --material: rgb(249 249 251 / 0.72);
+  --material-border: rgb(0 0 0 / 0.08);
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.04), 0 1px 1px rgb(0 0 0 / 0.03);
+  --shadow-2: 0 2px 6px rgb(0 0 0 / 0.04), 0 8px 24px rgb(0 0 0 / 0.07);
+  --shadow-3: 0 8px 20px rgb(0 0 0 / 0.08), 0 24px 64px rgb(0 0 0 / 0.16);
+  color-scheme: light;
+}
+
+.dark {
+  --bg: #000000;
+  --surface: #1c1c1e;
+  --surface-raised: #2c2c2e;
+  --label: #ffffff;
+  --label-2: rgb(235 235 245 / 0.7);
+  --label-3: rgb(235 235 245 / 0.42);
+  --separator: rgb(84 84 88 / 0.55);
+  --fill: rgb(118 118 128 / 0.24);
+  --fill-strong: rgb(118 118 128 / 0.36);
+  --accent: #0a84ff;
+  --accent-soft: rgb(10 132 255 / 0.2);
+  --positive: #30d158;
+  --positive-soft: rgb(48 209 88 / 0.16);
+  --negative: #ff6961;
+  --negative-soft: rgb(255 69 58 / 0.16);
+  --warning: #ff9f0a;
+  --material: rgb(30 30 32 / 0.72);
+  --material-border: rgb(255 255 255 / 0.08);
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-2: 0 2px 8px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.35);
+  --shadow-3: 0 8px 24px rgb(0 0 0 / 0.5), 0 24px 64px rgb(0 0 0 / 0.55);
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', Inter, system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-raised: var(--surface-raised);
+  --color-label: var(--label);
+  --color-label-2: var(--label-2);
+  --color-label-3: var(--label-3);
+  --color-separator: var(--separator);
+  --color-fill: var(--fill);
+  --color-fill-strong: var(--fill-strong);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-positive: var(--positive);
+  --color-positive-soft: var(--positive-soft);
+  --color-negative: var(--negative);
+  --color-negative-soft: var(--negative-soft);
+  --color-warning: var(--warning);
+
+  --shadow-1: var(--shadow-1);
+  --shadow-2: var(--shadow-2);
+  --shadow-3: var(--shadow-3);
+
+  --radius-card: 20px;
+  --radius-sheet: 24px;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-bg font-sans text-label;
+    font-size: 17px;
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+  }
+  /* Visible, consistent focus ring for keyboard users only. */
+  :focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 10px;
+  }
+  button {
+    cursor: pointer;
+  }
+  ::selection {
+    background: var(--accent-soft);
+  }
+}
+
+@layer components {
+  /* Translucent "material" surface, like iOS bars and sheets. */
+  .material {
+    background: var(--material);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    backdrop-filter: saturate(180%) blur(20px);
+  }
+  .hairline-b {
+    box-shadow: inset 0 -0.5px 0 var(--separator);
+  }
+  .hairline-t {
+    box-shadow: inset 0 0.5px 0 var(--separator);
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Markdown inside assistant chat messages. */
+@layer components {
+  .prose-chat > * + * {
+    margin-top: 0.6em;
+  }
+  .prose-chat strong {
+    font-weight: 600;
+  }
+  .prose-chat ul,
+  .prose-chat ol {
+    padding-left: 1.2em;
+  }
+  .prose-chat ul {
+    list-style: disc;
+  }
+  .prose-chat ol {
+    list-style: decimal;
+  }
+  .prose-chat li + li {
+    margin-top: 0.2em;
+  }
+  .prose-chat code {
+    font-family: var(--font-mono);
+    font-size: 0.88em;
+    background: var(--fill);
+    border-radius: 6px;
+    padding: 0.1em 0.35em;
+  }
+  .prose-chat table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+  .prose-chat th {
+    text-align: left;
+    font-weight: 600;
+    color: var(--label-2);
+  }
+  .prose-chat th,
+  .prose-chat td {
+    padding: 0.3em 0.5em;
+    border-bottom: 0.5px solid var(--separator);
+  }
+  .prose-chat a {
+    color: var(--accent);
+  }
+}
