@@ -1,9 +1,10 @@
 [project]
 name = "myshare-shared"
 version = "0.1.0"
-description = "Shared helpers (money parsing/formatting)"
+description = "Shared helpers (money parsing/formatting, LangSmith tracing setup)"
 requires-python = ">=3.12"
 dependencies = [
+    "langsmith==0.14.12",
     "pydantic==2.14.1",
 ]
 

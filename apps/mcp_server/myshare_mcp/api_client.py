@@ -12,6 +12,7 @@ import os
 from typing import Any
 
 import httpx
+import langsmith
 from mcp.server.mcpserver.exceptions import ToolError
 
 DEFAULT_API_URL = "http://localhost:8000"
@@ -71,6 +72,18 @@ class MyShareAPI:
         # Drop None query params so optional filters don't become "?x=None".
         if "params" in kw:
             kw["params"] = {k: v for k, v in kw["params"].items() if v is not None}
+        # One LangSmith run per REST call (when tracing is on). The bearer token is never
+        # an input: it lives in the client's default headers.
+        with langsmith.trace(
+            f"{method} {path}",
+            run_type="tool",
+            inputs={"params": kw.get("params"), "body": kw.get("json")},
+        ) as run:
+            data = await self._send(method, path, **kw)
+            run.end(outputs={"response": data})
+            return data
+
+    async def _send(self, method: str, path: str, **kw: Any) -> Any:
         try:
             resp = await self._client.request(method, path, **kw)
         except httpx.HTTPError as exc:

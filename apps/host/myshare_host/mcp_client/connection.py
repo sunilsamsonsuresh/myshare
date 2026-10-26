@@ -35,9 +35,10 @@ import sys
 from collections.abc import AsyncIterator
 from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, cast
 
 import httpx2
+import langsmith
 from mcp import ClientSession
 from mcp.client._transport import TransportStreams
 from mcp.client.stdio import StdioServerParameters, get_default_environment, stdio_client
@@ -50,10 +51,13 @@ from mcp.types import (
     PaginatedRequestParams,
     Prompt,
     ReadResourceResult,
+    RequestParamsMeta,
     Resource,
     ResourceTemplate,
     Tool,
 )
+
+from myshare_shared.tracing import trace_meta
 
 from ..config import Settings, get_settings
 from .wire import WireTap
@@ -102,8 +106,20 @@ class MCPConnection:
         return next((t for t in await self.list_tools() if t.name == name), None)
 
     async def call_tool(self, name: str, arguments: dict[str, Any]) -> CallToolResult:
-        """`tools/call`. A tool *failure* comes back as a result with is_error=True (not an exception)."""
-        return await self.session.call_tool(name, arguments)
+        """`tools/call`. A tool *failure* comes back as a result with is_error=True (not an exception).
+
+        Traced as one LangSmith "tool" run (dry runs are labelled "preview"). The run's id
+        travels in the request's `_meta`, so the MCP server's own run nests under it.
+        """
+        label = f"{name} (preview)" if arguments.get("dry_run") else name
+        with langsmith.trace(
+            label, run_type="tool", inputs={"tool": name, "arguments": arguments}
+        ) as run:
+            result = await self.session.call_tool(
+                name, arguments, meta=cast(RequestParamsMeta | None, trace_meta(run))
+            )
+            run.end(outputs=result.model_dump(mode="json", exclude_none=True))
+            return result
 
     # ---- resources (application-controlled)
     async def list_resources(self) -> list[Resource]:

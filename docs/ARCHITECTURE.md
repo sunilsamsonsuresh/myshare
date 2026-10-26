@@ -60,7 +60,7 @@ sequenceDiagram
     S->>A: GET /users/me/summary (JWT)
     H->>C: tools/list (→ LangChain tools, dry_run hidden)
     H->>G: astream(messages, thread "u1:<id>")
-    G->>L: system prompt (+ me/summary) + history + tools
+    G->>L: fixed system prompt + history (+ me/summary note if changed) + tools
     L-->>G: tool_call list_groups
     G->>C: tools/call list_groups
     C->>S: tools/call
@@ -89,7 +89,7 @@ sequenceDiagram
 ```mermaid
 stateDiagram-v2
     [*] --> load_context: new user message
-    load_context --> agent: user_context = me/summary
+    load_context --> agent: me/summary note (only if changed)
     agent --> [*]: no tool calls
     agent --> tools: only read-only tools
     agent --> prepare_approval: any write tool

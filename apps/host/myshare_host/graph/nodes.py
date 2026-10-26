@@ -15,13 +15,13 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from langchain_core.messages import AIMessage, SystemMessage, ToolMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langgraph.graph import END
 from langgraph.runtime import Runtime
 from langgraph.types import interrupt
 
 from ..mcp_client import frame_for_llm, needs_approval, result_text, supports_dry_run
-from .prompts import build_system_prompt
+from .prompts import CONTEXT_NOTE, build_context_note, build_system_prompt
 from .state import AgentState, Decision, HostContext, PendingAction
 
 ME_RESOURCE = "myshare://me/summary"
@@ -39,11 +39,14 @@ def _first_line(text: str) -> str:
 
 # --------------------------------------------------------------------------- load_context
 async def load_context(state: AgentState, runtime: Runtime[HostContext]) -> dict[str, Any]:
-    """Read an MCP RESOURCE and put it in the system prompt.
+    """Read an MCP RESOURCE and give it to the model as a context note.
 
     This is application-controlled context: the host (not the model) decides to read
     myshare://me/summary at the start of every turn. The model then knows who "me" is,
     and the user's current balances, without spending a tool call.
+
+    The note goes into the conversation, not the system prompt (see prompts.py), and only
+    when it differs from the last one, e.g. after an expense changed a balance.
     """
     ctx = runtime.context
     text = await ctx.conn.read_text_resource(ME_RESOURCE)
@@ -52,16 +55,28 @@ async def load_context(state: AgentState, runtime: Runtime[HostContext]) -> dict
         {"event": "resource_read", "uri": ME_RESOURCE, "request": req, "response": resp}
     )
     gated = [name for name, tool in ctx.tools.items() if needs_approval(tool)]
-    return {"user_context": text, "gated_tools": gated}
+    note = build_context_note(text)
+    if note == state.get("user_context"):
+        return {"gated_tools": gated}
+    # Place the note just BEFORE the user's new message. Neither has reached the model yet,
+    # so this edits nothing it has seen: the note takes over the message's slot (same id),
+    # and the message moves after it under a fresh id.
+    new = state["messages"][-1]
+    return {
+        "user_context": note,
+        "gated_tools": gated,
+        "messages": [
+            HumanMessage(note, id=new.id, name=CONTEXT_NOTE),
+            new.model_copy(update={"id": None}),
+        ],
+    }
 
 
 # --------------------------------------------------------------------------- agent
 async def agent(state: AgentState, runtime: Runtime[HostContext]) -> dict[str, Any]:
     """The LLM call. Tokens stream to the UI via LangGraph's "messages" stream mode."""
     ctx = runtime.context
-    system = SystemMessage(
-        build_system_prompt(state.get("user_context", ""), ctx.conn.instructions)
-    )
+    system = SystemMessage(build_system_prompt(ctx.conn.instructions))
     response = await ctx.llm.ainvoke([system, *state["messages"]])
     return {"messages": [response]}
 

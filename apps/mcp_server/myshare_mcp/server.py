@@ -30,6 +30,7 @@ from myshare_shared.money import MoneyError, to_minor
 from . import views as v
 from .api_client import MyShareAPI
 from .auth import capture_request_headers, user_token
+from .tracing import trace_tool_calls
 
 log = logging.getLogger("myshare_mcp")
 
@@ -45,7 +46,10 @@ mcp = MCPServer(
     title="MyShare",
     version="0.1.0",
     instructions=INSTRUCTIONS,  # sent to the client during initialization
-    middleware=[capture_request_headers],  # makes the caller's HTTP headers available (auth.py)
+    middleware=[
+        capture_request_headers,  # makes the caller's HTTP headers available (auth.py)
+        trace_tool_calls,  # LangSmith run per tools/call, when tracing is on (tracing.py)
+    ],
 )
 
 

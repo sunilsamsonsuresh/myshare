@@ -38,9 +38,12 @@ from mcp.client._transport import TransportStreams
 from mcp.shared.exceptions import MCPError
 from pydantic import SecretStr
 
+from myshare_shared.tracing import configure_tracing
+
 from .config import get_settings
 from .graph.builder import AgentGraph
 from .graph.nodes import ME_RESOURCE
+from .graph.prompts import CONTEXT_NOTE
 from .graph.state import HostContext
 from .mcp_client import MCPConnection, connect_mcp, load_langchain_tools
 
@@ -87,6 +90,11 @@ class ChatService:
     llm_factory: LLMFactory = default_llm
     transport_factory: TransportFactory | None = None  # tests inject an in-memory transport
     recursion_limit: int = field(default_factory=lambda: get_settings().max_agent_steps * 4)
+
+    def __post_init__(self) -> None:
+        # Every entry point (web host, CLI, scripts) builds a ChatService, so this is where
+        # the LangSmith privacy filter goes on, before the first traced LLM or tool call.
+        configure_tracing("host")
 
     def connect(self, token: str) -> AbstractAsyncContextManager[MCPConnection]:
         transport = self.transport_factory(token) if self.transport_factory else None
@@ -214,6 +222,8 @@ class ChatService:
         snap = await self.graph.aget_state(self.config(me["id"], thread_id))
         items: list[dict[str, Any]] = []
         for m in snap.values.get("messages", []):
+            if isinstance(m, HumanMessage) and m.name == CONTEXT_NOTE:
+                continue  # host-written context for the model, not something the user typed
             if isinstance(m, HumanMessage):
                 items.append({"role": "user", "text": m.text})
             elif isinstance(m, AIMessage):

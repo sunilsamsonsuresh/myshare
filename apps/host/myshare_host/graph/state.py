@@ -34,7 +34,7 @@ class Decision(TypedDict):
 
 class AgentState(TypedDict):
     messages: Annotated[list[AnyMessage], add_messages]
-    user_context: NotRequired[str]  # contents of myshare://me/summary
+    user_context: NotRequired[str]  # the last context note added to messages (me/summary + date)
     gated_tools: NotRequired[list[str]]  # tool names that need approval (from annotations)
     pending: NotRequired[list[PendingAction]]
     decisions: NotRequired[dict[str, Decision]]  # tool_call_id -> decision

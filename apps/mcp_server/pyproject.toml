@@ -5,6 +5,7 @@ description = "MyShare MCP server: thin adapter over the REST API"
 requires-python = ">=3.12"
 dependencies = [
     "httpx==0.28.1",
+    "langsmith==0.14.12",
     "mcp==2.3.0",
     "myshare-shared",
 ]

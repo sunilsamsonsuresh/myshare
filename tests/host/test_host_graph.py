@@ -14,6 +14,7 @@ from mcp.client._memory import InMemoryTransport
 from mcp.types import Tool, ToolAnnotations
 
 from myshare_host.graph.builder import build_graph
+from myshare_host.graph.prompts import CONTEXT_NOTE
 from myshare_host.mcp_client.tools import frame_for_llm, llm_input_schema, needs_approval
 from myshare_host.service import ChatService, TurnRequest
 from myshare_mcp.server import mcp
@@ -62,9 +63,12 @@ async def test_read_only_turn_streams_tokens_and_tool_events(people, trip, wire,
     assert not of(events, "approval_required")
     assert events[-1] == {"event": "done", "thread_id": "t1", "awaiting_approval": False}
 
-    # The host put the MCP resource into the system prompt, and the tool result came back framed as data.
-    system = llm.seen[0][0].content
-    assert '"name": "Me"' in system and "Never invent or guess ids" in system
+    # The host put the MCP resource in a context note just before the user's words,
+    # and the tool result came back framed as data.
+    system, note, question = llm.seen[0]
+    assert "Never invent or guess ids" in system.content
+    assert note.name == CONTEXT_NOTE and '"name": "Me"' in note.content
+    assert question.content == "Which groups am I in?"
     tool_msg = llm.seen[1][-1]
     assert 'trust="untrusted-data"' in tool_msg.content
     # dry_run is a host-only parameter: the model never sees it.
@@ -115,6 +119,39 @@ async def test_write_requires_approval_then_resumes(client, people, trip, wire, 
     assert text_of(events).strip() == "Added the dinner."
     saved = client.get(f"/expenses?group_id={trip}", headers=me.h).json()
     assert [(e["description"], e["amount"]) for e in saved] == [("Dinner", 300000)]
+
+
+async def test_conversation_is_append_only_across_turns(people, trip, wire, saver):
+    """Regression: Claude's thinking blocks are bound to the exact system prompt and history
+    they were written under. A system prompt rebuilt with fresh balances after a write made
+    the API reject the next turn (400 "The `system` prompt differs...")."""
+    me = people["me"]
+    wire(me)
+    llm = ScriptedChatModel(
+        script=[
+            call("add_expense", add_dinner(people, trip), id="c1"),
+            say("Added the dinner."),
+            say("Priya and Rahul owe you ₹1,000.00 each."),
+            say("Still the same."),
+        ]
+    )
+    svc = make_service(saver, llm)
+    await run(svc, me.token, message="Split ₹3,000 dinner with Priya and Rahul in Goa Trip")
+    await run(svc, me.token, resume={"action": "approve"})
+    await run(svc, me.token, message="Who owes me now?")  # balances changed -> new note
+    await run(svc, me.token, message="And now?")  # nothing changed -> no new note
+
+    def sent(call: list) -> list[tuple]:
+        return [(m.type, m.name, m.content) for m in call]
+
+    calls = [sent(c) for c in llm.seen]
+    assert len(calls) == 4
+    assert len({c[0] for c in calls}) == 1  # identical system prompt on every call
+    for before, after in zip(calls, calls[1:], strict=False):
+        assert after[: len(before)] == before  # later calls only append
+    notes = [m for m in calls[-1] if m[1] == CONTEXT_NOTE]
+    assert len(notes) == 2
+    assert "₹2,000.00" not in notes[0][2] and "₹2,000.00" in notes[1][2]  # the new balance
 
 
 async def test_reject_tells_the_model_and_writes_nothing(client, people, trip, wire, saver):

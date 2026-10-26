@@ -11,6 +11,8 @@ import logging
 import os
 import sys
 
+from myshare_shared.tracing import configure_tracing
+
 from .server import mcp
 
 
@@ -33,6 +35,7 @@ def main() -> None:
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
     log = logging.getLogger("myshare_mcp")
+    configure_tracing("mcp server")  # LangSmith privacy filter; no-op unless LANGSMITH_TRACING=true
 
     if args.transport == "stdio":
         log.info(

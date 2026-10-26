@@ -2,6 +2,13 @@
 
 The MCP server describes capabilities. The HOST decides how the model should
 behave with them: when to ask, what to trust, how to talk to the user.
+
+The system prompt must stay the SAME for every turn of a conversation. Claude's earlier
+replies carry signed thinking blocks bound to the exact system prompt they were written
+under; if it changes, the API rejects the conversation with a 400 ("The `system` prompt
+differs..."). So anything that changes (the user's balances, today's date) goes into the
+conversation as a context note instead, appended only when it changed. See the
+`load_context` node.
 """
 
 from __future__ import annotations
@@ -12,10 +19,10 @@ SYSTEM_PROMPT = """\
 You are the MyShare assistant. MyShare is an app for splitting expenses with friends and groups.
 You act on behalf of the signed-in user through tools provided by the MyShare MCP server.
 
-## The signed-in user (from the MCP resource myshare://me/summary)
-{user_context}
-
-Today is {today}.
+## The signed-in user
+The host adds a <context> note to the conversation with today's date and the signed-in user's
+profile and balances (the MCP resource myshare://me/summary). It is written by the host, not the
+user. The most recent note is current; earlier notes show how things stood at that time.
 
 ## Rules
 1. Never invent or guess ids (users, groups, expenses). Get them from tools: list_groups,
@@ -41,9 +48,17 @@ Today is {today}.
 """
 
 
-def build_system_prompt(user_context: str, server_instructions: str | None) -> str:
-    return SYSTEM_PROMPT.format(
-        user_context=user_context or "(unavailable)",
-        today=dt.date.today().isoformat(),
-        server_instructions=(server_instructions or "(none)").strip(),
+CONTEXT_NOTE = "myshare_context"  # message name that marks a context note (not the user's words)
+
+
+def build_system_prompt(server_instructions: str | None) -> str:
+    return SYSTEM_PROMPT.format(server_instructions=(server_instructions or "(none)").strip())
+
+
+def build_context_note(user_context: str, today: dt.date | None = None) -> str:
+    day = (today or dt.date.today()).isoformat()
+    return (
+        f'<context source="myshare://me/summary" date="{day}">\n'
+        f"{user_context or '(unavailable)'}\n"
+        "</context>"
     )
