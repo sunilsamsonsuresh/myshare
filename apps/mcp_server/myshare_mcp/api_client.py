@@ -72,8 +72,11 @@ class MyShareAPI:
         # Drop None query params so optional filters don't become "?x=None".
         if "params" in kw:
             kw["params"] = {k: v for k, v in kw["params"].items() if v is not None}
-        # One LangSmith run per REST call (when tracing is on). The bearer token is never
-        # an input: it lives in the client's default headers.
+        # One LangSmith run per REST call made inside a traced tool call. Calls outside one
+        # (e.g. resource reads) would each become a stray one-step trace, so they aren't
+        # traced. The bearer token is never an input: it lives in the client's default headers.
+        if langsmith.get_current_run_tree() is None:
+            return await self._send(method, path, **kw)
         with langsmith.trace(
             f"{method} {path}",
             run_type="tool",
