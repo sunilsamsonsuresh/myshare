@@ -77,7 +77,7 @@ async def delete_expense(expense_id: int, dry_run: bool = False) -> Annotated[Ca
 
 The type hints *are* the schema. The SDK generates `inputSchema` from the parameters, and `outputSchema` from `v.ExpenseWriteResult`.
 
-**Resources are nouns** with URIs. They're for context the *application* wants the model to have. Our host reads `myshare://me/summary` at the start of **every** turn (`graph/nodes.py: load_context`) and puts it in the system prompt. The model knows who "me" is and your current balance without spending a tool call, and it can't "forget" to look. `myshare://groups/{group_id}` is a **resource template**, a parameterized URI.
+**Resources are nouns** with URIs. They're for context the *application* wants the model to have. Our host reads `myshare://me/summary` at the start of **every** turn (`graph/nodes.py: load_context`) and adds it to the conversation as a `<context>` note (only when it changed). The model knows who "me" is and your current balance without spending a tool call, and it can't "forget" to look. `myshare://groups/{group_id}` is a **resource template**, a parameterized URI.
 
 **Prompts are recipes** the user invokes. `/monthly_summary 2026-09` calls `prompts/get`, which returns ready-made messages ("Call list_expenses with since=2026-09-01, until=2026-09-30 ..."). The host adds them to the conversation, and the model then uses tools as usual. In the chat, type `/` to see them. `split_receipt` returns a user message *and* an assistant message, so the conversation opens with the assistant asking the right questions. The host notices the prompt ends with the assistant speaking, and waits for you instead of calling the model (`service.py`).
 

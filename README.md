@@ -36,6 +36,7 @@ Demo logins (password `password123`): `demo@myshare.app` (Sunil), `priya@`, `rah
 
 | Read | What you'll learn |
 |---|---|
+| [`docs/HOW_IT_WORKS.md`](docs/HOW_IT_WORKS.md) | The whole app from input to output: every process, file and request path, plus how LangSmith tracing works. Diagram-ready |
 | [`docs/MCP_EXPLAINED.md`](docs/MCP_EXPLAINED.md) | MCP from first principles, using this code: host/client/server, the three primitives, a real JSON-RPC transcript, transports, auth, prompt injection, tool design, exercises |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Diagrams, the "add expense via chat" request flow, the data model, the LangGraph state machine, every design decision |
 | [`apps/mcp_server/README.md`](apps/mcp_server/README.md) | Running the MCP server alone; MCP Inspector and Claude Desktop setup |
